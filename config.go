@@ -15,7 +15,7 @@ type Config struct {
 	Strategy         Strategy
 	ConcurrencyLimit uint32
 
-	rules   []ConfigRule
+	rules   []*ConfigRule
 	rulesMu sync.RWMutex
 }
 
@@ -26,7 +26,7 @@ func NewConfig() *Config {
 	}
 }
 
-func NewConfigWithRules(rules []ConfigRule) *Config {
+func NewConfigWithRules(rules []*ConfigRule) *Config {
 	cfg := NewConfig()
 
 	for _, rule := range rules {
@@ -36,7 +36,7 @@ func NewConfigWithRules(rules []ConfigRule) *Config {
 	return cfg
 }
 
-func (c *Config) AddRule(rule ConfigRule) {
+func (c *Config) AddRule(rule *ConfigRule) {
 	c.rulesMu.Lock()
 	defer c.rulesMu.Unlock()
 
@@ -54,20 +54,20 @@ func (c Config) getTicker() <-chan time.Time {
 		c.rulesMu.RLock()
 		defer c.rulesMu.RUnlock()
 
-		interval = calculateMinimalInterval(c.rules)
+		interval = c.calculateMinimalInterval()
 	}
 
 	return time.Tick(interval)
 }
 
-func calculateMinimalInterval(rules []ConfigRule) time.Duration {
+func (c Config) calculateMinimalInterval() time.Duration {
 	var interval time.Duration
 
-	if len(rules) == 0 {
+	if len(c.rules) == 0 {
 		return minimalInterval
 	}
 
-	for _, rule := range rules {
+	for _, rule := range c.rules {
 		i := rule.getInterval()
 
 		if interval == 0 || i < interval {

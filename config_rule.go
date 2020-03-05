@@ -9,7 +9,7 @@ type ConfigRule struct {
 	Period time.Duration
 }
 
-func NewRule(count uint, period time.Duration) *ConfigRule {
+func NewConfigRule(count uint, period time.Duration) *ConfigRule {
 	return &ConfigRule{
 		Count:  count,
 		Period: period,

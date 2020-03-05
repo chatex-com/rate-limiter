@@ -12,38 +12,41 @@ var (
 )
 
 type Stat struct {
-	inProgress uint32
-	queue      uint32
-	done       uint32
+	inProgress int32
+	queue      int32
+	done       int32
 }
 
-type Limiter struct {
+type Runner struct {
 	ticker   <-chan time.Time
 	requests chan JobRequest
 	wg       sync.WaitGroup
 	stat     Stat
 
-	rules []*limiterRule
+	rules []*runnerRule
 	mu    sync.RWMutex
 }
 
-func NewLimiter(cfg *Config) *Limiter {
-	limiter := &Limiter{
+func NewRunner(cfg *Config) (*Runner, error) {
+	runner := &Runner{
 		requests: make(chan JobRequest, cfg.ConcurrencyLimit), // FIXME: Check it
 		ticker:   cfg.getTicker(),
-		rules:    make([]*limiterRule, len(cfg.rules)),
+		rules:    make([]*runnerRule, len(cfg.rules)),
 	}
 
-	limiter.initRules(cfg.rules)
+	err := runner.initRules(cfg.rules)
+	if err != nil {
+		return nil, err
+	}
 
-	go limiter.start()
+	go runner.start()
 
-	return limiter
+	return runner, nil
 }
 
-func (l *Limiter) initRules(rules []ConfigRule) error {
+func (l *Runner) initRules(rules []*ConfigRule) error {
 	for i, rule := range rules {
-		r, err := newLimiterRule(rule)
+		r, err := newRunnerRule(rule)
 
 		if err != nil {
 			return err
@@ -55,15 +58,16 @@ func (l *Limiter) initRules(rules []ConfigRule) error {
 	return nil
 }
 
-func (l *Limiter) Execute(job Job) <-chan JobResponse {
+func (l *Runner) Execute(job Job) <-chan JobResponse {
 	return l.ExecuteWithExpiration(job, 0)
 }
 
-func (l *Limiter) ExecuteWithExpiration(job Job, timout time.Duration) <-chan JobResponse {
+func (l *Runner) ExecuteWithExpiration(job Job, timout time.Duration) <-chan JobResponse {
 	return l.execute(job, timout)
 }
 
-func (l *Limiter) execute(job Job, timeout time.Duration) <-chan JobResponse {
+func (l *Runner) execute(job Job, timeout time.Duration) <-chan JobResponse {
+	atomic.AddInt32(&l.stat.queue, 1)
 	ch := make(chan JobResponse)
 
 	l.wg.Add(1)
@@ -86,19 +90,19 @@ func (l *Limiter) execute(job Job, timeout time.Duration) <-chan JobResponse {
 	return ch
 }
 
-func (l *Limiter) Stat() Stat {
+func (l *Runner) Stat() Stat {
 	return Stat{
-		inProgress: atomic.LoadUint32(&l.stat.inProgress),
-		queue:      atomic.LoadUint32(&l.stat.queue),
-		done:       atomic.LoadUint32(&l.stat.done),
+		inProgress: atomic.LoadInt32(&l.stat.inProgress),
+		queue:      atomic.LoadInt32(&l.stat.queue),
+		done:       atomic.LoadInt32(&l.stat.done),
 	}
 }
 
-func (l Limiter) AwaitAll() {
+func (l Runner) AwaitAll() {
 	l.wg.Wait()
 }
 
-func (l *Limiter) start() {
+func (l *Runner) start() {
 	for range l.ticker {
 		// FIXME [√]: Implement the main limitations
 		// FIXME [√]: Execution Strategy ("immediately" or "evenly")
@@ -139,7 +143,7 @@ func (l *Limiter) start() {
 	}
 }
 
-func (l *Limiter) getFreeSlot() (time.Duration, bool) {
+func (l *Runner) getFreeSlot() (time.Duration, bool) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 
@@ -170,14 +174,17 @@ func (l *Limiter) getFreeSlot() (time.Duration, bool) {
 	return wait, false
 }
 
-func (l Limiter) hasConcurrentSlot() bool {
-	inProgress := atomic.LoadUint32(&l.stat.inProgress)
-	limit := uint32(cap(l.requests))
+func (l Runner) hasConcurrentSlot() bool {
+	inProgress := atomic.LoadInt32(&l.stat.inProgress)
+	limit := int32(cap(l.requests))
 
 	return limit > inProgress
 }
 
-func (l *Limiter) executeRequest(r *JobRequest) {
+func (l *Runner) executeRequest(r *JobRequest) {
+	atomic.AddInt32(&l.stat.inProgress, 1)
+	atomic.AddInt32(&l.stat.queue, -1)
+
 	l.mu.Lock()
 	now := time.Now()
 	for _, r := range l.rules {
@@ -187,8 +194,8 @@ func (l *Limiter) executeRequest(r *JobRequest) {
 
 	result, err := r.job()
 
-	atomic.AddUint32(&l.stat.done, 1)
-	atomic.AddUint32(&l.stat.inProgress, -1)
+	atomic.AddInt32(&l.stat.done, 1)
+	atomic.AddInt32(&l.stat.inProgress, -1)
 
 	r.ch <- JobResponse{
 		Result: result,
