@@ -1,22 +1,15 @@
-package bandwish_limiter
+package job_runner
 
 import (
+	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
-type Job func() (interface{}, error)
-
-type Request struct {
-	job Job
-	ch  chan Response
-}
-
-type Response struct {
-	Result interface{}
-	Error  error
-}
+var (
+	ErrJobExpired = errors.New("job was expired")
+)
 
 type Stat struct {
 	inProgress uint32
@@ -26,19 +19,19 @@ type Stat struct {
 
 type Limiter struct {
 	ticker   <-chan time.Time
-	requests chan Request
+	requests chan JobRequest
 	wg       sync.WaitGroup
 	stat     Stat
 
-	rules []limiterRule
+	rules []*limiterRule
 	mu    sync.RWMutex
 }
 
 func NewLimiter(cfg *Config) *Limiter {
 	limiter := &Limiter{
-		requests: make(chan Request, cfg.ConcurrencyLimit), // FIXME: Check it
+		requests: make(chan JobRequest, cfg.ConcurrencyLimit), // FIXME: Check it
 		ticker:   cfg.getTicker(),
-		rules:    make([]limiterRule, len(cfg.rules)),
+		rules:    make([]*limiterRule, len(cfg.rules)),
 	}
 
 	limiter.initRules(cfg.rules)
@@ -48,25 +41,47 @@ func NewLimiter(cfg *Config) *Limiter {
 	return limiter
 }
 
-func (l *Limiter) initRules(rules []ConfigRule) {
+func (l *Limiter) initRules(rules []ConfigRule) error {
 	for i, rule := range rules {
-		l.rules[i] = newLimiterRule(rule)
+		r, err := newLimiterRule(rule)
+
+		if err != nil {
+			return err
+		}
+
+		l.rules[i] = r
 	}
+
+	return nil
 }
 
-func (l *Limiter) Execute(job Job) <-chan Response {
-	ch := make(chan Response)
+func (l *Limiter) Execute(job Job) <-chan JobResponse {
+	return l.ExecuteWithExpiration(job, 0)
+}
+
+func (l *Limiter) ExecuteWithExpiration(job Job, timout time.Duration) <-chan JobResponse {
+	return l.execute(job, timout)
+}
+
+func (l *Limiter) execute(job Job, timeout time.Duration) <-chan JobResponse {
+	ch := make(chan JobResponse)
 
 	l.wg.Add(1)
 
+	r := JobRequest{
+		job: job,
+		ch:  ch,
+	}
+
+	if timeout > 0 {
+		r.expiredAt = time.Now().Add(timeout)
+	}
+
 	// add request to the queue channel in separated goroutine
 	// because the channel can be overload
-	go func(job Job) {
-		l.requests <- Request{
-			job: job,
-			ch:  ch,
-		}
-	}(job)
+	go func(r JobRequest) {
+		l.requests <- r
+	}(r)
 
 	return ch
 }
@@ -88,7 +103,7 @@ func (l *Limiter) start() {
 		// FIXME [√]: Implement the main limitations
 		// FIXME [√]: Execution Strategy ("immediately" or "evenly")
 		// FIXME [√]: Concurrency limitation - check it
-		// FIXME [ ]: Support timeouts in request
+		// FIXME [√]: Support timeouts in request
 
 		if !l.hasConcurrentSlot() {
 			continue
@@ -105,7 +120,20 @@ func (l *Limiter) start() {
 			<-time.Tick(wait)
 		}
 
-		req := <-l.requests
+		var req JobRequest
+		for {
+			req = <-l.requests
+
+			if req.isExpired() {
+				req.ch <- JobResponse{
+					Result: nil,
+					Error:  ErrJobExpired,
+				}
+				continue
+			}
+
+			break
+		}
 
 		go l.executeRequest(&req)
 	}
@@ -149,7 +177,7 @@ func (l Limiter) hasConcurrentSlot() bool {
 	return limit > inProgress
 }
 
-func (l *Limiter) executeRequest(r *Request) {
+func (l *Limiter) executeRequest(r *JobRequest) {
 	l.mu.Lock()
 	now := time.Now()
 	for _, r := range l.rules {
@@ -162,7 +190,7 @@ func (l *Limiter) executeRequest(r *Request) {
 	atomic.AddUint32(&l.stat.done, 1)
 	atomic.AddUint32(&l.stat.inProgress, -1)
 
-	r.ch <- Response{
+	r.ch <- JobResponse{
 		Result: result,
 		Error:  err,
 	}

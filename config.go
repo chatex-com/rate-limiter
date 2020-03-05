@@ -1,4 +1,4 @@
-package bandwish_limiter
+package job_runner
 
 import (
 	"sync"

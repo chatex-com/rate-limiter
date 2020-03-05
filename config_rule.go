@@ -1,4 +1,4 @@
-package bandwish_limiter
+package job_runner
 
 import (
 	"time"
@@ -10,8 +10,6 @@ type ConfigRule struct {
 }
 
 func NewRule(count uint, period time.Duration) *ConfigRule {
-	// FIXME: Check period and count for positive values
-
 	return &ConfigRule{
 		Count:  count,
 		Period: period,
