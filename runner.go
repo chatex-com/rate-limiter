@@ -14,6 +14,7 @@ var (
 type Stat struct {
 	inProgress int32
 	queue      int32
+	expired    int32
 	done       int32
 }
 
@@ -95,6 +96,7 @@ func (l *Runner) Stat() Stat {
 		inProgress: atomic.LoadInt32(&l.stat.inProgress),
 		queue:      atomic.LoadInt32(&l.stat.queue),
 		done:       atomic.LoadInt32(&l.stat.done),
+		expired:    atomic.LoadInt32(&l.stat.expired),
 	}
 }
 
@@ -133,6 +135,10 @@ func (l *Runner) start() {
 					Result: nil,
 					Error:  ErrJobExpired,
 				}
+				atomic.AddInt32(&l.stat.expired, 1)
+				atomic.AddInt32(&l.stat.queue, -1)
+				close(req.ch)
+				l.wg.Done()
 				continue
 			}
 
