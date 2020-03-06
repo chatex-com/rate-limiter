@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	ErrNegativeRuleCount = errors.New("rule.Count must be a positive value")
-	ErrNegativeRulePeriod = errors.New("rule.Period must be a positive value")
+	ErrZeroRuleCount  = errors.New("rule.Count must be a positive value")
+	ErrZeroRulePeriod = errors.New("rule.Period must be a positive value")
 )
 
 type runnerRule struct {
@@ -19,14 +19,12 @@ type runnerRule struct {
 }
 
 func newRunnerRule(rule *ConfigRule) (*runnerRule, error) {
-	// FIXME: Check period and count for positive values
-
 	if rule.Count <= 0 {
-		return nil, ErrNegativeRuleCount
+		return nil, ErrZeroRuleCount
 	}
 
 	if rule.Period <= 0 {
-		return nil, ErrNegativeRulePeriod
+		return nil, ErrZeroRulePeriod
 	}
 
 	r := &runnerRule{
@@ -64,7 +62,9 @@ func (r *runnerRule) getFreeSlot() (time.Duration, bool) {
 		return 0, true
 	}
 
-	return time.Since(r.times[0]), false
+	wait := r.cfg.Period - time.Since(r.times[0])
+
+	return wait, false
 }
 
 func (r *runnerRule) freeSlots() int32 {
