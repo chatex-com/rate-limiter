@@ -8,5 +8,5 @@ const (
 type Strategy uint32
 
 func (s Strategy) String() string {
-	return [...]string{"ASAP", "Evenly"}[s]
+	return [...]string{"Immediately", "Evenly"}[s]
 }
