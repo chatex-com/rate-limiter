@@ -101,7 +101,7 @@ func TestGetFreeSlot(t *testing.T) {
 		So(exist, ShouldBeFalse)
 		So(wait, ShouldAlmostEqual, 10 * time.Millisecond, time.Millisecond)
 
-		time.Sleep(wait)
+		time.Sleep(50 * time.Millisecond + wait)
 
 		wait, exist = rule.getFreeSlot()
 		So(exist, ShouldBeTrue)

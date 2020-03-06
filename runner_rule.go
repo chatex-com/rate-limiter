@@ -58,10 +58,6 @@ func (r *runnerRule) getFreeSlot() (time.Duration, bool) {
 	r.timesMu.RLock()
 	defer r.timesMu.RUnlock()
 
-	if len(r.times) == 0 {
-		return 0, true
-	}
-
 	wait := r.cfg.Period - time.Since(r.times[0])
 
 	return wait, false

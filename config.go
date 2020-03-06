@@ -7,7 +7,7 @@ import (
 
 const (
 	// TODO: We should decide which minimal tick for request we will use (nano, micro, mini etc)
-	minimalTickInterval     = time.Microsecond
+	minimalTickInterval     = time.Millisecond
 	defaultConcurrencyLimit = 100
 )
 

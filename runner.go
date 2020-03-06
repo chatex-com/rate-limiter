@@ -42,7 +42,7 @@ func NewRunner(cfg *Config) (*Runner, error) {
 		return nil, err
 	}
 
-	go runner.start()
+	go runner.loop()
 
 	return runner, nil
 }
@@ -71,6 +71,7 @@ func (l *Runner) ExecuteWithExpiration(job Job, timout time.Duration) <-chan Job
 
 func (l *Runner) execute(job Job, timeout time.Duration) <-chan JobResponse {
 	atomic.AddInt32(&l.stat.queue, 1)
+
 	ch := make(chan JobResponse)
 
 	l.wg.Add(1)
@@ -106,7 +107,7 @@ func (l Runner) AwaitAll() {
 	l.wg.Wait()
 }
 
-func (l *Runner) start() {
+func (l *Runner) loop() {
 	for range l.ticker {
 		// FIXME [√]: Implement the main limitations
 		// FIXME [√]: Execution Strategy ("immediately" or "evenly")
