@@ -7,7 +7,7 @@ import (
 
 const (
 	// TODO: We should decide which minimal tick for request we will use (nano, micro, mini etc)
-	minimalInterval         = time.Microsecond
+	minimalTickInterval     = time.Microsecond
 	defaultConcurrencyLimit = 100
 )
 
@@ -43,28 +43,28 @@ func (c *Config) AddRule(rule *ConfigRule) {
 	c.rules = append(c.rules, rule)
 }
 
-func (c Config) getTicker() <-chan time.Time {
+func (c Config) getTickInterval() time.Duration {
 	var interval time.Duration
+
 	switch c.Strategy {
 	case StrategyImmediately:
-		interval = minimalInterval
+		interval = minimalTickInterval
 		break
 	case StrategyEvenly:
-	default:
 		c.rulesMu.RLock()
 		defer c.rulesMu.RUnlock()
 
 		interval = c.calculateMinimalInterval()
 	}
 
-	return time.Tick(interval)
+	return interval
 }
 
 func (c Config) calculateMinimalInterval() time.Duration {
 	var interval time.Duration
 
 	if len(c.rules) == 0 {
-		return minimalInterval
+		return minimalTickInterval
 	}
 
 	for _, rule := range c.rules {

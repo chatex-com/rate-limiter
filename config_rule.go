@@ -19,8 +19,8 @@ func NewConfigRule(count uint, period time.Duration) *ConfigRule {
 func (r ConfigRule) getInterval() time.Duration {
 	i := r.Period / time.Duration(r.Count)
 
-	if i < minimalInterval {
-		return minimalInterval
+	if i < minimalTickInterval {
+		return minimalTickInterval
 	}
 
 	return i

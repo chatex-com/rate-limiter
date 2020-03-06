@@ -29,9 +29,11 @@ type Runner struct {
 }
 
 func NewRunner(cfg *Config) (*Runner, error) {
+	interval := cfg.getTickInterval()
+
 	runner := &Runner{
 		requests: make(chan JobRequest, cfg.ConcurrencyLimit), // FIXME: Check it
-		ticker:   cfg.getTicker(),
+		ticker:   time.Tick(interval),
 		rules:    make([]*runnerRule, len(cfg.rules)),
 	}
 
