@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	ErrZeroRuleCount  = errors.New("rule.Capacity must be a positive value")
-	ErrZeroRulePeriod = errors.New("rule.Interval must be a positive value")
+	ErrZeroRuleCount    = errors.New("rule.Capacity must be a positive value")
+	ErrZeroRuleInterval = errors.New("rule.Interval must be a positive value")
 )
 
 type Quota struct {
@@ -25,7 +25,7 @@ func NewQuota(cfg config.Quota) (*Quota, error) {
 	}
 
 	if cfg.Interval <= 0 {
-		return nil, ErrZeroRulePeriod
+		return nil, ErrZeroRuleInterval
 	}
 
 	r := &Quota{
@@ -60,9 +60,6 @@ func (r *Quota) GetFreeSlot() (time.Duration, bool) {
 	defer r.timesMu.RUnlock()
 
 	wait := r.cfg.Interval - time.Since(r.times[0])
-	if wait < 0 {
-		wait = 0
-	}
 
 	return wait, false
 }

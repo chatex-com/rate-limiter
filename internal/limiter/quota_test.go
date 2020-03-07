@@ -9,7 +9,7 @@ import (
 	"rate_limiter/pkg/config"
 )
 
-func TestNewRunnerRule(t *testing.T) {
+func TestNewQuota(t *testing.T) {
 	Convey("Error on rule.Capacity is zero", t, func() {
 		rule, err := NewQuota(*config.NewQuota(0, time.Second))
 
@@ -18,12 +18,12 @@ func TestNewRunnerRule(t *testing.T) {
 		So(err, ShouldEqual, ErrZeroRuleCount)
 	})
 
-	Convey("Error on rule.Interval is zero", t, func() {
+	Convey("Error on quota.Interval is zero", t, func() {
 		rule, err := NewQuota(*config.NewQuota(10, 0))
 
 		So(rule, ShouldBeNil)
 		So(err, ShouldBeError)
-		So(err, ShouldEqual, ErrZeroRulePeriod)
+		So(err, ShouldEqual, ErrZeroRuleInterval)
 	})
 
 	Convey("Success creation", t, func() {
@@ -52,26 +52,26 @@ func TestAddTime(t *testing.T) {
 
 func TestFreeSlots(t *testing.T) {
 	Convey("default", t, func() {
-		rule, _ := NewQuota(*config.NewQuota(2, 10 * time.Millisecond))
+		quota, _ := NewQuota(*config.NewQuota(2, 10 * time.Millisecond))
 
-		So(rule.freeSlots(), ShouldEqual, 2)
+		So(quota.freeSlots(), ShouldEqual, 2)
 
-		rule.Add(time.Now())
+		quota.Add(time.Now())
 
-		So(rule.freeSlots(), ShouldEqual, 1)
-
-		time.Sleep(20 * time.Millisecond)
-
-		So(rule.freeSlots(), ShouldEqual, 2)
-
-		rule.Add(time.Now())
-		rule.Add(time.Now())
-
-		So(rule.freeSlots(), ShouldEqual, 0)
+		So(quota.freeSlots(), ShouldEqual, 1)
 
 		time.Sleep(20 * time.Millisecond)
 
-		So(rule.freeSlots(), ShouldEqual, 2)
+		So(quota.freeSlots(), ShouldEqual, 2)
+
+		quota.Add(time.Now())
+		quota.Add(time.Now())
+
+		So(quota.freeSlots(), ShouldEqual, 0)
+
+		time.Sleep(20 * time.Millisecond)
+
+		So(quota.freeSlots(), ShouldEqual, 2)
 	})
 }
 

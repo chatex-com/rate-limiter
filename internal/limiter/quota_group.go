@@ -38,6 +38,10 @@ func (g *QuotaGroup) ReserveFreeSlot() (bool, time.Duration) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
+	if len(g.quotas) == 0 {
+		return true, 0
+	}
+
 	var limited bool
 	waits := make([]time.Duration, len(g.quotas))
 	for _, q := range g.quotas {
