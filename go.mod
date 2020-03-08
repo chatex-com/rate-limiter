@@ -1,4 +1,4 @@
-module job_runner
+module rate_limiter
 
 go 1.13
 
