@@ -14,7 +14,7 @@ type Worker struct {
 	requests      <-chan job.Request
 	done          chan bool
 	isRunning     bool
-	isRunningLock sync.Locker
+	isRunningLock sync.RWMutex
 	stat          Stat
 }
 
@@ -23,18 +23,18 @@ func NewWorker(quotas *limiter.QuotaGroup, requests <-chan job.Request, done cha
 		quotas:        quotas,
 		requests:      requests,
 		done:          done,
-		isRunningLock: &sync.Mutex{},
 	}
 }
 
 func (w *Worker) Start() {
 	w.isRunningLock.Lock()
+	defer w.isRunningLock.Unlock()
+
 	if w.isRunning {
 		return
 	}
 
 	w.isRunning = true
-	w.isRunningLock.Unlock()
 
 	go w.loop()
 }
@@ -51,18 +51,14 @@ func (w *Worker) Stop() {
 }
 
 func (w *Worker) IsRunning() bool {
-	w.isRunningLock.Lock()
-	defer w.isRunningLock.Unlock()
+	w.isRunningLock.RLock()
+	defer w.isRunningLock.RUnlock()
 
 	return w.isRunning
 }
 
 func (w *Worker) loop() {
-	for w.isRunning {
-		if !w.IsRunning() {
-			return
-		}
-
+	for w.IsRunning() {
 		request := <-w.requests
 
 		if request.IsExpired() {
