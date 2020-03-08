@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"time"
 
-	"rate_limiter"
-	"rate_limiter/pkg/config"
-	"rate_limiter/pkg/job"
+	"github.com/chatex-com/rate-limiter"
+	"github.com/chatex-com/rate-limiter/pkg/config"
+	"github.com/chatex-com/rate-limiter/pkg/job"
 )
 
 func main() {
@@ -29,6 +29,7 @@ func main() {
 
 	var ch <-chan job.Response
 	var response job.Response
+
 	// Execute job when it will be allowed by quota
 	ch = limiter.Execute(func() (interface{}, error) {
 		return nil, nil

@@ -7,9 +7,9 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 
-	"rate_limiter/internal/limiter"
-	"rate_limiter/pkg/config"
-	"rate_limiter/pkg/job"
+	"github.com/chatex-com/rate-limiter/internal/limiter"
+	"github.com/chatex-com/rate-limiter/pkg/config"
+	"github.com/chatex-com/rate-limiter/pkg/job"
 )
 
 func TestNewRateLimiter(t *testing.T) {

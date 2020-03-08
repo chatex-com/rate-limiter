@@ -5,8 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"rate_limiter/internal/limiter"
-	"rate_limiter/pkg/job"
+	"github.com/chatex-com/rate-limiter/internal/limiter"
+	"github.com/chatex-com/rate-limiter/pkg/job"
 )
 
 type Worker struct {

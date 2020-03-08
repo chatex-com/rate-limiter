@@ -4,10 +4,10 @@ import (
 	"sync"
 	"time"
 
-	"rate_limiter/internal/limiter"
-	"rate_limiter/internal/worker"
-	"rate_limiter/pkg/config"
-	"rate_limiter/pkg/job"
+	"github.com/chatex-com/rate-limiter/internal/limiter"
+	"github.com/chatex-com/rate-limiter/internal/worker"
+	"github.com/chatex-com/rate-limiter/pkg/config"
+	"github.com/chatex-com/rate-limiter/pkg/job"
 )
 
 type RateLimiter struct {

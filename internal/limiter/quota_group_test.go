@@ -6,7 +6,7 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 
-	"rate_limiter/pkg/config"
+	"github.com/chatex-com/rate-limiter/pkg/config"
 )
 
 func TestNewQuotaGroup(t *testing.T) {

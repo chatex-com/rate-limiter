@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"rate_limiter/pkg/config"
+	"github.com/chatex-com/rate-limiter/pkg/config"
 )
 
 type QuotaGroup struct {
