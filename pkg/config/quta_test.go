@@ -15,11 +15,3 @@ func TestNewQuota(t *testing.T) {
 		So(rule.Interval, ShouldEqual, time.Second)
 	})
 }
-
-func TestGetInterval(t *testing.T) {
-	Convey("Usual case", t, func() {
-		rule := NewQuota(10, time.Second)
-
-		So(rule.getInterval(), ShouldEqual, 100 * time.Millisecond)
-	})
-}

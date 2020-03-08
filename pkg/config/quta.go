@@ -15,9 +15,3 @@ func NewQuota(capacity uint, interval time.Duration) *Quota {
 		Interval: interval,
 	}
 }
-
-func (r Quota) getInterval() time.Duration {
-	i := r.Interval / time.Duration(r.Capacity)
-
-	return i
-}

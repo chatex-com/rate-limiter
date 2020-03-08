@@ -34,6 +34,17 @@ func TestNewQuotaGroup(t *testing.T) {
 }
 
 func TestCreateList(t *testing.T) {
+	Convey("Create list with error", t, func() {
+		quotas := []config.Quota{
+			*config.NewQuota(0, 0),
+		}
+		list, err := createList(quotas)
+
+		So(err, ShouldBeError)
+		So(err, ShouldBeIn, []error{ErrZeroRuleCount, ErrZeroRuleInterval})
+		So(list, ShouldHaveLength, 0)
+	})
+
 	Convey("Create empty list", t, func() {
 		var quotas []config.Quota
 		list, err := createList(quotas)
@@ -87,5 +98,37 @@ func TestReserveFreeSlot(t *testing.T) {
 
 		So(free, ShouldBeTrue)
 		So(wait, ShouldEqual, 0)
+	})
+
+	Convey("Free queue", t, func() {
+		group, _ := NewQuotaGroup([]config.Quota{
+			*config.NewQuota(10, time.Second),
+		})
+		free, wait := group.ReserveFreeSlot()
+
+		So(free, ShouldBeTrue)
+		So(wait, ShouldEqual, 0)
+	})
+
+	Convey("Busy queue with free quotas", t, func() {
+		group, _ := NewQuotaGroup([]config.Quota{
+			*config.NewQuota(10, time.Second),
+		})
+		_, _ = group.ReserveFreeSlot()
+		free, wait := group.ReserveFreeSlot()
+
+		So(free, ShouldBeTrue)
+		So(wait, ShouldEqual, 0)
+	})
+
+	Convey("Busy queue without free quotas", t, func() {
+		group, _ := NewQuotaGroup([]config.Quota{
+			*config.NewQuota(1, time.Second),
+		})
+		_, _ = group.ReserveFreeSlot()
+		free, wait := group.ReserveFreeSlot()
+
+		So(free, ShouldBeFalse)
+		So(wait, ShouldAlmostEqual, time.Second, time.Millisecond)
 	})
 }
