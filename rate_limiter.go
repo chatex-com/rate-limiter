@@ -11,7 +11,6 @@ import (
 )
 
 type RateLimiter struct {
-	concurrency   uint32
 	quotas        *limiter.QuotaGroup
 	workers       []*worker.Worker
 	requests      chan job.Request
@@ -27,22 +26,21 @@ func NewRateLimiter(cfg config.Config) (*RateLimiter, error) {
 	}
 
 	l := &RateLimiter{
-		concurrency:   cfg.Concurrency,
 		quotas:        quotas,
 		isRunningLock: &sync.Mutex{},
 		requests:      make(chan job.Request, cfg.Concurrency),
 	}
 
-	l.init()
+	l.init(cfg.Concurrency)
 
 	return l, nil
 }
 
-func (l *RateLimiter) init() {
-	l.workers = make([]*worker.Worker, l.concurrency)
+func (l *RateLimiter) init(concurrency uint32) {
+	l.workers = make([]*worker.Worker, concurrency)
 
-	done := make(chan bool, l.concurrency)
-	for i := uint32(0); i < l.concurrency; i++ {
+	done := make(chan bool, concurrency)
+	for i := uint32(0); i < concurrency; i++ {
 		l.workers[i] = worker.NewWorker(l.quotas, l.requests, done)
 	}
 
@@ -58,7 +56,6 @@ func (l *RateLimiter) Execute(job job.Job) <-chan job.Response {
 }
 
 func (l *RateLimiter) ExecuteWithTimout(j job.Job, timeout time.Duration) <-chan job.Response {
-	// atomic.AddInt32(&l.stat.queue, 1)
 	l.wg.Add(1)
 
 	ch := make(chan job.Response)
@@ -92,6 +89,8 @@ func (l *RateLimiter) Start() {
 	for _, w := range l.workers {
 		w.Start()
 	}
+
+	l.isRunning = true
 }
 
 func (l *RateLimiter) Stop() {
@@ -105,7 +104,10 @@ func (l *RateLimiter) Stop() {
 	for _, w := range l.workers {
 		w.Stop()
 	}
+
+	l.isRunning = false
 }
+
 func (l *RateLimiter) AwaitAll() {
 	l.wg.Wait()
 }
