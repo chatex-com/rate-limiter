@@ -14,6 +14,7 @@ import (
 
 	"rate_limiter"
 	"rate_limiter/pkg/config"
+	"rate_limiter/pkg/job"
 )
 
 func main() {
@@ -26,13 +27,25 @@ func main() {
 	limiter, _ := rate_limiter.NewRateLimiter(*cfg)
 	limiter.Start()
 
-	ch := limiter.Execute(func() (interface{}, error) {
+	var ch <-chan job.Response
+	var response job.Response
+	// Execute job when it will be allowed by quota
+	ch = limiter.Execute(func() (interface{}, error) {
 		return nil, nil
 	})
 
-	r := <-ch
-	fmt.Println(r.Result) // nil
-	fmt.Println(r.Error) // nil
+	response = <-ch
+	fmt.Println(response.Result) // nil
+	fmt.Println(response.Error) // nil
+
+	// Execute job when it will be allowed by quota with timeout
+	ch = limiter.ExecuteWithTimout(func() (interface{}, error) {
+		return nil, nil
+	}, time.Minute)
+
+	response = <-ch
+	fmt.Println(response.Result) // nil
+	fmt.Println(response.Error) // nil
 
 	limiter.AwaitAll()
 	limiter.Stop()
