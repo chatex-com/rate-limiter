@@ -1,4 +1,4 @@
-package rate_limiter
+package limiter
 
 import (
 	"sync"
@@ -19,7 +19,7 @@ type RateLimiter struct {
 	wg            sync.WaitGroup
 }
 
-func NewRateLimiter(cfg config.Config) (*RateLimiter, error) {
+func NewRateLimiter(cfg *config.Config) (*RateLimiter, error) {
 	quotas, err := limiter.NewQuotaGroup(cfg.GetQuotas())
 	if err != nil {
 		return nil, err
@@ -44,8 +44,8 @@ func (l *RateLimiter) init(concurrency uint32) {
 	}
 }
 
-func (l *RateLimiter) Execute(job job.Job) <-chan job.Response {
-	return l.ExecuteWithTimout(job, 0)
+func (l *RateLimiter) Execute(j job.Job) <-chan job.Response {
+	return l.ExecuteWithTimout(j, 0)
 }
 
 func (l *RateLimiter) ExecuteWithTimout(j job.Job, timeout time.Duration) <-chan job.Response {

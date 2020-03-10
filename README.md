@@ -24,7 +24,7 @@ func main() {
 	})
 	cfg.Concurrency = 10
 
-	limiter, _ := rate_limiter.NewRateLimiter(*cfg)
+	limiter, _ := rate_limiter.NewRateLimiter(cfg)
 	limiter.Start()
 
 	var ch <-chan job.Response

@@ -20,7 +20,7 @@ type Quota struct {
 }
 
 func NewQuota(cfg config.Quota) (*Quota, error) {
-	if cfg.Capacity <= 0 {
+	if cfg.Capacity == 0 {
 		return nil, ErrZeroRuleCount
 	}
 
