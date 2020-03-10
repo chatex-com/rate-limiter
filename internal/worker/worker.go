@@ -12,17 +12,17 @@ import (
 type Worker struct {
 	quotas        *limiter.QuotaGroup
 	requests      <-chan job.Request
-	done          chan bool
+	wg            *sync.WaitGroup
 	isRunning     bool
 	isRunningLock sync.RWMutex
 	stat          Stat
 }
 
-func NewWorker(quotas *limiter.QuotaGroup, requests <-chan job.Request, done chan bool) *Worker {
+func NewWorker(quotas *limiter.QuotaGroup, requests <-chan job.Request, wg *sync.WaitGroup) *Worker {
 	return &Worker{
-		quotas:        quotas,
-		requests:      requests,
-		done:          done,
+		quotas:   quotas,
+		requests: requests,
+		wg:       wg,
 	}
 }
 
@@ -110,7 +110,7 @@ func (w *Worker) execute(request job.Request) {
 
 	close(request.Ch)
 
-	w.done <- true
+	w.wg.Done()
 }
 
 func (w *Worker) error(request job.Request, err error) {
@@ -122,5 +122,5 @@ func (w *Worker) error(request job.Request, err error) {
 	atomic.AddInt64(&w.stat.Error, 1)
 	close(request.Ch)
 
-	w.done <- true
+	w.wg.Done()
 }

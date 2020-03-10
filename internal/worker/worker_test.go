@@ -1,6 +1,7 @@
 package worker
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -15,21 +16,21 @@ func TestNewWorker(t *testing.T) {
 	Convey("Create new worker", t, func() {
 		quotas := &limiter.QuotaGroup{}
 		requests := make(<-chan job.Request)
-		done := make(chan bool)
+		wg := &sync.WaitGroup{}
 
-		worker := NewWorker(quotas, requests, done)
+		worker := NewWorker(quotas, requests, wg)
 
 		So(worker, ShouldNotBeNil)
 		So(worker, ShouldHaveSameTypeAs, &Worker{})
 		So(worker.quotas, ShouldEqual, quotas)
 		So(worker.requests, ShouldEqual, requests)
-		So(worker.done, ShouldEqual, done)
+		So(worker.wg, ShouldEqual, wg)
 	})
 }
 
 func TestStartStop(t *testing.T) {
 	Convey("Start(), Stop(), IsRunning()", t, func() {
-		worker := NewWorker(&limiter.QuotaGroup{}, make(chan job.Request), make(chan bool))
+		worker := NewWorker(&limiter.QuotaGroup{}, make(chan job.Request), &sync.WaitGroup{})
 
 		So(worker.IsRunning(), ShouldBeFalse)
 		worker.Start()
@@ -39,7 +40,7 @@ func TestStartStop(t *testing.T) {
 	})
 
 	Convey("Multiple calls Start(), Stop()", t, func() {
-		worker := NewWorker(&limiter.QuotaGroup{}, make(chan job.Request), make(chan bool))
+		worker := NewWorker(&limiter.QuotaGroup{}, make(chan job.Request), &sync.WaitGroup{})
 
 		So(worker.IsRunning(), ShouldBeFalse)
 		worker.Start()
@@ -54,9 +55,9 @@ func TestStartStop(t *testing.T) {
 func TestLoop(t *testing.T) {
 	Convey("Success job execution", t, func() {
 		quotas, _ := limiter.NewQuotaGroup([]config.Quota{})
-		done := make(chan bool)
+		wg := &sync.WaitGroup{}
 		requests := make(chan job.Request)
-		worker := NewWorker(quotas, requests, done)
+		worker := NewWorker(quotas, requests, wg)
 		worker.Start()
 
 		request := job.Request{
@@ -68,15 +69,13 @@ func TestLoop(t *testing.T) {
 
 		So(worker.stat.Done, ShouldBeZeroValue)
 
+		wg.Add(1)
 		requests <- request
 
 		resp := <-request.Ch
 		So(resp, ShouldHaveSameTypeAs, job.Response{})
 		So(resp.Result, ShouldEqual, 123)
 		So(resp.Error, ShouldBeNil)
-
-		d := <-done
-		So(d, ShouldBeTrue)
 
 		So(worker.stat.Done, ShouldEqual, 1)
 	})
@@ -85,9 +84,9 @@ func TestLoop(t *testing.T) {
 		quotas, _ := limiter.NewQuotaGroup([]config.Quota{
 			*config.NewQuota(1, time.Second),
 		})
-		done := make(chan bool)
+		wg := &sync.WaitGroup{}
 		requests := make(chan job.Request, 2)
-		worker := NewWorker(quotas, requests, done)
+		worker := NewWorker(quotas, requests, wg)
 		worker.Start()
 
 		request1 := job.Request{
@@ -108,6 +107,7 @@ func TestLoop(t *testing.T) {
 		So(worker.stat.Error, ShouldBeZeroValue)
 		So(worker.stat.Done, ShouldBeZeroValue)
 
+		wg.Add(2)
 		requests <- request1
 		requests <- request2
 
@@ -115,24 +115,20 @@ func TestLoop(t *testing.T) {
 		So(resp1, ShouldHaveSameTypeAs, job.Response{})
 		So(resp1.Result, ShouldBeNil)
 		So(resp1.Error, ShouldBeNil)
-		d := <-done
-		So(d, ShouldBeTrue)
 
 		resp2 := <-request2.Ch
 		So(resp2, ShouldHaveSameTypeAs, job.Response{})
 		So(resp2.Result, ShouldBeNil)
 		So(resp2.Error, ShouldBeNil)
-		d = <-done
-		So(d, ShouldBeTrue)
 
 		So(worker.stat.Done, ShouldEqual, 2)
 	})
 
 	Convey("Error job execution", t, func() {
 		quotas, _ := limiter.NewQuotaGroup([]config.Quota{})
-		done := make(chan bool)
+		wg := &sync.WaitGroup{}
 		requests := make(chan job.Request)
-		worker := NewWorker(quotas, requests, done)
+		worker := NewWorker(quotas, requests, wg)
 		worker.Start()
 
 		request := job.Request{
@@ -145,6 +141,7 @@ func TestLoop(t *testing.T) {
 		So(worker.stat.Error, ShouldBeZeroValue)
 		So(worker.stat.Done, ShouldBeZeroValue)
 
+		wg.Add(1)
 		requests <- request
 
 		resp := <-request.Ch
@@ -152,9 +149,6 @@ func TestLoop(t *testing.T) {
 		So(resp.Result, ShouldBeNil)
 		So(resp.Error, ShouldBeError)
 		So(resp.Error, ShouldEqual, job.ErrJobExpired)
-
-		d := <-done
-		So(d, ShouldBeTrue)
 
 		So(worker.stat.Error, ShouldEqual, 1)
 		So(worker.stat.Done, ShouldBeZeroValue)
@@ -162,9 +156,9 @@ func TestLoop(t *testing.T) {
 
 	Convey("Expired job execution", t, func() {
 		quotas, _ := limiter.NewQuotaGroup([]config.Quota{})
-		done := make(chan bool)
+		wg := &sync.WaitGroup{}
 		requests := make(chan job.Request)
-		worker := NewWorker(quotas, requests, done)
+		worker := NewWorker(quotas, requests, wg)
 		worker.Start()
 
 		request := job.Request{
@@ -172,13 +166,14 @@ func TestLoop(t *testing.T) {
 
 				return nil, nil
 			},
-			Ch: make(chan job.Response),
+			Ch:        make(chan job.Response),
 			ExpiredAt: time.Now().Add(-time.Hour),
 		}
 
 		So(worker.stat.Error, ShouldBeZeroValue)
 		So(worker.stat.Done, ShouldBeZeroValue)
 
+		wg.Add(1)
 		requests <- request
 
 		resp := <-request.Ch
@@ -186,9 +181,6 @@ func TestLoop(t *testing.T) {
 		So(resp.Result, ShouldBeNil)
 		So(resp.Error, ShouldBeError)
 		So(resp.Error, ShouldEqual, job.ErrJobExpired)
-
-		d := <-done
-		So(d, ShouldBeTrue)
 
 		So(worker.stat.Error, ShouldEqual, 1)
 		So(worker.stat.Done, ShouldBeZeroValue)
@@ -198,9 +190,9 @@ func TestLoop(t *testing.T) {
 		quotas, _ := limiter.NewQuotaGroup([]config.Quota{
 			*config.NewQuota(1, time.Second),
 		})
-		done := make(chan bool)
+		wg := &sync.WaitGroup{}
 		requests := make(chan job.Request, 2)
-		worker := NewWorker(quotas, requests, done)
+		worker := NewWorker(quotas, requests, wg)
 		worker.Start()
 
 		request1 := job.Request{
@@ -215,13 +207,14 @@ func TestLoop(t *testing.T) {
 
 				return nil, nil
 			},
-			Ch: make(chan job.Response),
+			Ch:        make(chan job.Response),
 			ExpiredAt: time.Now().Add(10 * time.Millisecond),
 		}
 
 		So(worker.stat.Error, ShouldBeZeroValue)
 		So(worker.stat.Done, ShouldBeZeroValue)
 
+		wg.Add(2)
 		requests <- request1
 		requests <- request2
 
@@ -229,16 +222,12 @@ func TestLoop(t *testing.T) {
 		So(resp1, ShouldHaveSameTypeAs, job.Response{})
 		So(resp1.Result, ShouldBeNil)
 		So(resp1.Error, ShouldBeNil)
-		d := <-done
-		So(d, ShouldBeTrue)
 
 		resp2 := <-request2.Ch
 		So(resp2, ShouldHaveSameTypeAs, job.Response{})
 		So(resp2.Result, ShouldBeNil)
 		So(resp2.Error, ShouldBeError)
 		So(resp2.Error, ShouldEqual, job.ErrJobExpired)
-		d = <-done
-		So(d, ShouldBeTrue)
 
 		So(worker.stat.Error, ShouldEqual, 1)
 		So(worker.stat.Done, ShouldEqual, 1)
@@ -250,7 +239,7 @@ func TestReserveFreeSlot(t *testing.T) {
 		quotas, _ := limiter.NewQuotaGroup([]config.Quota{
 			*config.NewQuota(10, time.Second),
 		})
-		worker := NewWorker(quotas, make(chan job.Request), make(chan bool))
+		worker := NewWorker(quotas, make(chan job.Request), &sync.WaitGroup{})
 		request := job.Request{}
 
 		err := worker.reserveFreeSlot(request)
@@ -262,7 +251,7 @@ func TestReserveFreeSlot(t *testing.T) {
 		quotas, _ := limiter.NewQuotaGroup([]config.Quota{
 			*config.NewQuota(10, time.Second),
 		})
-		worker := NewWorker(quotas, make(chan job.Request), make(chan bool))
+		worker := NewWorker(quotas, make(chan job.Request), &sync.WaitGroup{})
 		request := job.Request{}
 
 		_ = worker.reserveFreeSlot(request)
@@ -273,10 +262,10 @@ func TestReserveFreeSlot(t *testing.T) {
 
 	Convey("Busy slot with expired job", t, func() {
 		quotas, _ := limiter.NewQuotaGroup([]config.Quota{
-			*config.NewQuota(1, 20 * time.Millisecond),
+			*config.NewQuota(1, 20*time.Millisecond),
 		})
-		worker := NewWorker(quotas, make(chan job.Request), make(chan bool))
-		request := job.Request{ExpiredAt:time.Now().Add(- time.Hour)}
+		worker := NewWorker(quotas, make(chan job.Request), &sync.WaitGroup{})
+		request := job.Request{ExpiredAt: time.Now().Add(- time.Hour)}
 
 		_ = worker.reserveFreeSlot(request)
 		err := worker.reserveFreeSlot(request)
