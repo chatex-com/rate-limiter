@@ -77,6 +77,7 @@ func TestLoop(t *testing.T) {
 		So(resp.Result, ShouldEqual, 123)
 		So(resp.Error, ShouldBeNil)
 
+		wg.Wait()
 		So(worker.stat.Done, ShouldEqual, 1)
 	})
 
@@ -121,6 +122,7 @@ func TestLoop(t *testing.T) {
 		So(resp2.Result, ShouldBeNil)
 		So(resp2.Error, ShouldBeNil)
 
+		wg.Wait()
 		So(worker.stat.Done, ShouldEqual, 2)
 	})
 
@@ -150,6 +152,7 @@ func TestLoop(t *testing.T) {
 		So(resp.Error, ShouldBeError)
 		So(resp.Error, ShouldEqual, job.ErrJobExpired)
 
+		wg.Wait()
 		So(worker.stat.Error, ShouldEqual, 1)
 		So(worker.stat.Done, ShouldBeZeroValue)
 	})
@@ -182,6 +185,7 @@ func TestLoop(t *testing.T) {
 		So(resp.Error, ShouldBeError)
 		So(resp.Error, ShouldEqual, job.ErrJobExpired)
 
+		wg.Wait()
 		So(worker.stat.Error, ShouldEqual, 1)
 		So(worker.stat.Done, ShouldBeZeroValue)
 	})
@@ -229,6 +233,7 @@ func TestLoop(t *testing.T) {
 		So(resp2.Error, ShouldBeError)
 		So(resp2.Error, ShouldEqual, job.ErrJobExpired)
 
+		wg.Wait()
 		So(worker.stat.Error, ShouldEqual, 1)
 		So(worker.stat.Done, ShouldEqual, 1)
 	})
