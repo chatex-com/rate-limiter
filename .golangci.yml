@@ -1,0 +1,85 @@
+linters-settings:
+  govet:
+    check-shadowing: false
+  maligned:
+    suggest-new: true
+  dupl:
+    threshold: 100
+  misspell:
+    locale: us
+  lll:
+    line-length: 140
+  goimports:
+    local-prefixes: gitlab.chatex.org/chatex-development/izi-payment
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - paramTypeCombine
+      - hugeParam
+      - rangeValCopy
+  funlen:
+    lines: 100
+    statements: 50
+  godox:
+    keywords:
+      - OPTIMIZE # marks code that should be optimized before merging
+      - FIXME # marks code that should be fixed before merging
+      - HACK # marks hack-arounds that should be removed before merging
+linters:
+  # please, do not use `enable-all`: it's deprecated and will be removed soon.
+  # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
+  disable-all: true
+  enable:
+    - deadcode
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unused
+    - varcheck
+    - bodyclose
+    - depguard
+    - dogsled
+    - dupl
+    - gocognit
+    - goconst
+    - gocritic
+    - godox
+    - gofmt
+    - goimports
+    - golint
+    - gomnd
+    - gosec
+    - misspell
+    - nakedret
+    - scopelint
+    - unconvert
+    - unparam
+    - whitespace
+
+issues:
+  exclude-rules:
+    - linters:
+        - gomnd
+      text: "Magic number: 1"
+
+run:
+  skip-dirs:
+    - .github
+  skip-files:
+    - ".+_test\\.go"
+
+# golangci.com configuration
+# https://github.com/golangci/golangci/wiki/Configuration
+service:
+  golangci-lint-version: 1.22.x # use the fixed version to not introduce new linters unexpectedly
+  prepare:
+    - echo "here I can run custom commands, but no preparation needed for this repo"
