@@ -39,16 +39,9 @@ func NewRateLimiter(cfg config.Config) (*RateLimiter, error) {
 func (l *RateLimiter) init(concurrency uint32) {
 	l.workers = make([]*worker.Worker, concurrency)
 
-	done := make(chan bool, concurrency)
 	for i := uint32(0); i < concurrency; i++ {
-		l.workers[i] = worker.NewWorker(l.quotas, l.requests, done)
+		l.workers[i] = worker.NewWorker(l.quotas, l.requests, &l.wg)
 	}
-
-	go func(done chan bool) {
-		for range done {
-			l.wg.Done()
-		}
-	}(done)
 }
 
 func (l *RateLimiter) Execute(job job.Job) <-chan job.Response {
