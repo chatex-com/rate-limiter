@@ -86,8 +86,8 @@ func TestReverse(t *testing.T) {
 
 		time.Sleep(time.Millisecond) // check that all goroutines were started
 
-		So(time.Since(group.quotas[0].times[0]), ShouldAlmostEqual, check, time.Millisecond)
-		So(time.Since(group.quotas[1].times[0]), ShouldAlmostEqual, check, time.Millisecond)
+		So(time.Since(group.quotas[0].times[0]), ShouldAlmostEqual, check, 2 * time.Millisecond)
+		So(time.Since(group.quotas[1].times[0]), ShouldAlmostEqual, check, 2 * time.Millisecond)
 	})
 }
 
@@ -129,6 +129,6 @@ func TestReserveFreeSlot(t *testing.T) {
 		free, wait := group.ReserveFreeSlot()
 
 		So(free, ShouldBeFalse)
-		So(wait, ShouldAlmostEqual, time.Second, time.Millisecond)
+		So(wait, ShouldAlmostEqual, time.Second, 2 * time.Millisecond)
 	})
 }
