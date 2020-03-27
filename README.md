@@ -24,14 +24,14 @@ func main() {
 	})
 	cfg.Concurrency = 10
 
-	limiter, _ := rate_limiter.NewRateLimiter(cfg)
-	limiter.Start()
+	rateLimiter, _ := limiter.NewRateLimiter(cfg)
+	rateLimiter.Start()
 
 	var ch <-chan job.Response
 	var response job.Response
 
 	// Execute job when it will be allowed by quota
-	ch = limiter.Execute(func() (interface{}, error) {
+	ch = rateLimiter.Execute(func() (interface{}, error) {
 		return nil, nil
 	})
 
@@ -40,7 +40,7 @@ func main() {
 	fmt.Println(response.Error) // nil
 
 	// Execute job when it will be allowed by quota with timeout
-	ch = limiter.ExecuteWithTimout(func() (interface{}, error) {
+	ch = rateLimiter.ExecuteWithTimout(func() (interface{}, error) {
 		return nil, nil
 	}, time.Minute)
 
@@ -48,7 +48,7 @@ func main() {
 	fmt.Println(response.Result) // nil
 	fmt.Println(response.Error) // nil
 
-	limiter.AwaitAll()
-	limiter.Stop()
+	rateLimiter.AwaitAll()
+	rateLimiter.Stop()
 }
 ```
