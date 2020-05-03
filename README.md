@@ -40,7 +40,7 @@ func main() {
 	fmt.Println(response.Error) // nil
 
 	// Execute job when it will be allowed by quota with timeout
-	ch = rateLimiter.ExecuteWithTimout(func() (interface{}, error) {
+	ch = rateLimiter.ExecuteWithTimeout(func() (interface{}, error) {
 		return nil, nil
 	}, time.Minute)
 
