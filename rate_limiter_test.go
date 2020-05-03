@@ -56,7 +56,7 @@ func TestRateLimiter_Execute(t *testing.T) {
 		l, _ := NewRateLimiter(cfg)
 		l.Start()
 
-		ch := l.ExecuteWithTimout(func() (interface{}, error) {
+		ch := l.ExecuteWithTimeout(func() (interface{}, error) {
 			return "foo", nil
 		}, time.Second)
 

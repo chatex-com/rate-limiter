@@ -45,10 +45,10 @@ func (l *RateLimiter) init(concurrency uint32) {
 }
 
 func (l *RateLimiter) Execute(j job.Job) <-chan job.Response {
-	return l.ExecuteWithTimout(j, 0)
+	return l.ExecuteWithTimeout(j, 0)
 }
 
-func (l *RateLimiter) ExecuteWithTimout(j job.Job, timeout time.Duration) <-chan job.Response {
+func (l *RateLimiter) ExecuteWithTimeout(j job.Job, timeout time.Duration) <-chan job.Response {
 	l.wg.Add(1)
 
 	ch := make(chan job.Response)
